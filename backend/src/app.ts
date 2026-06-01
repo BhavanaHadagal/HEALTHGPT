@@ -60,6 +60,17 @@ app.use('/api/history', historyRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/hospitals', hospitalRoutes);
 
+// Root route — friendly welcome
+app.get('/', (_req, res) => {
+  res.json({
+    service: 'HealthGPT for Rural Areas — API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: ['/api/health', '/api/chat', '/api/history', '/api/hospitals', '/api/reminders'],
+    docs: 'https://github.com/your-repo/HealthGPT',
+  });
+});
+
 // Health check
 app.get('/api/health', (_req, res) => {
   res.json({

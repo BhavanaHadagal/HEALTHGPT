@@ -1,8 +1,14 @@
 import axios from 'axios';
 import { Language, ChatApiResponse, RemindersApiResponse, Reminder, CreateReminderPayload } from '../types';
 
+// In dev: Vite proxy forwards /api → localhost:5000
+// In production: use VITE_API_URL env variable (set in Vercel frontend project settings)
+const BASE_URL = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : '/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: BASE_URL,
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 });
