@@ -18,20 +18,21 @@ const app = express();
 // Security middleware
 app.use(helmet());
 
-// CORS — allow configured frontend URL + Vercel preview URLs
-const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:5173',
-  /^https:\/\/.*\.vercel\.app$/,
-];
-
+// CORS — allow localhost dev + all Vercel deployments + configured frontend URL
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // server-to-server
-      const allowed = allowedOrigins.some((o) =>
-        typeof o === 'string' ? o === origin : o.test(origin)
-      );
-      callback(allowed ? null : new Error('Not allowed by CORS'), allowed);
+      // Allow requests with no origin (server-to-server, Vercel edge proxy)
+      if (!origin) return callback(null, true);
+
+      const allowed =
+        origin === (process.env.FRONTEND_URL || 'http://localhost:5173') ||
+        origin === 'http://localhost:5173' ||
+        origin === 'http://localhost:3000' ||
+        /^https:\/\/.*\.vercel\.app$/.test(origin) ||
+        /^https:\/\/healthgpt/.test(origin);
+
+      callback(null, allowed);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
