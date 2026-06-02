@@ -18,48 +18,39 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Stable ref so voice callback can call sendMessage without circular dep
+  const sendMessageRef = useRef<(text: string) => void>(() => {});
+
+  // Call useVoiceInput first so resetTranscript is available
   const {
     isListening,
     transcript,
+    status: voiceStatus,
     startListening,
     stopListening,
     resetTranscript,
     isSupported: voiceSupported,
     error: voiceError,
-  } = useVoiceInput(language);
+  } = useVoiceInput(language, {
+    onFinalResult: useCallback((text: string) => {
+      setInput(text);
+      sendMessageRef.current(text);
+    }, []),
+  });
 
-  // Auto-fill input from voice transcript
-  useEffect(() => {
-    if (transcript) setInput(transcript);
-  }, [transcript]);
-
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isLoading]);
-
-  // Auto-resize textarea
-  useEffect(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    ta.style.height = 'auto';
-    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
-  }, [input]);
-
-  const handleSend = useCallback(async () => {
-    const trimmed = input.trim();
-    if (!trimmed || isLoading) return;
+  const sendMessage = useCallback(async (text: string) => {
+    if (!text.trim() || isLoading) return;
 
     setInput('');
     resetTranscript();
     setError(null);
     setShowEmergency(false);
 
-    addMessage({ role: 'user', content: trimmed });
+    addMessage({ role: 'user', content: text });
     setIsLoading(true);
 
     try {
-      const result = await sendChatMessage(trimmed, language, sessionId);
+      const result = await sendChatMessage(text, language, sessionId);
       setIsApiConnected(true);
 
       if (result.isEmergency) setShowEmergency(true);
@@ -80,7 +71,32 @@ export default function ChatPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, language, sessionId, addMessage, resetTranscript, setIsApiConnected, t]);
+  }, [isLoading, language, sessionId, addMessage, resetTranscript, setIsApiConnected, t]);
+
+  // Keep ref pointing to latest sendMessage
+  sendMessageRef.current = sendMessage;
+
+  const handleSend = useCallback(() => {
+    sendMessage(input.trim());
+  }, [input, sendMessage]);
+
+  // Auto-fill input from interim voice transcript
+  useEffect(() => {
+    if (transcript) setInput(transcript);
+  }, [transcript]);
+
+  // Scroll to bottom on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+  }, [input]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -232,7 +248,12 @@ export default function ChatPage() {
           {isListening && (
             <div className="flex items-center justify-center gap-2 mb-2 py-1.5 bg-red-50 rounded-lg border border-red-100">
               <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-              <p className="text-sm text-red-600 font-medium">{t.chatListening}</p>
+              <p className="text-sm text-red-600 font-medium">
+                {voiceStatus || t.chatListening}
+                <span className="text-xs font-normal text-red-400 ml-2">
+                  ({language === 'hi' ? 'हिंदी में बोलें' : language === 'kn' ? 'ಕನ್ನಡದಲ್ಲಿ ಮಾತನಾಡಿ' : 'Speak in English'})
+                </span>
+              </p>
             </div>
           )}
 

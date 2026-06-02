@@ -20,8 +20,8 @@ const getGeminiResponse = async (prompt: string): Promise<string> => {
 
   const genAI = new GoogleGenerativeAI(apiKey);
 
-  // Try models in priority order (fastest/cheapest first)
-  const modelNames = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-flash-latest'];
+  // Try models in priority order — 2.5-flash first as it has wider quota availability
+  const modelNames = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'];
   let lastError: Error | null = null;
 
   for (const modelName of modelNames) {
